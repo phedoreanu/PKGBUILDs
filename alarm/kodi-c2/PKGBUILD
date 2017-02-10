@@ -6,36 +6,44 @@ _prefix=/usr
 
 pkgbase=kodi-c2
 pkgname=('kodi-c2' 'kodi-c2-eventclients')
-_commit=c695b8ab9ab93120ac3f5ab952bcbf28cbcce959
-pkgver=17.0rc2
+_commit=8a739ce0a41e3f029e5310c51d379bb11540140f
+pkgver=18.0alpha
 pkgrel=1
 arch=('aarch64')
 url="http://kodi.tv"
 license=('GPL2')
-makedepends=(
-  'afpfs-ng' 'bluez-libs' 'boost' 'cmake' 'curl' 'cwiid' 'doxygen' 'git' 'glew'
-  'gperf' 'hicolor-icon-theme' 'jasper' 'java-runtime' 'libaacs' 'libass'
-  'libbluray' 'libcdio' 'odroid-c2-libgl-fb' 'odroid-c2-libgl-headers'
-  'libmariadbclient' 'libmicrohttpd' 'libmodplug' 'libmpeg2' 'libnfs'
-  'libplist' 'libpulse' 'libssh' 'libva' 'mesa' 'libcrossguid' 'libcec'
-  'libxslt' 'lzo' 'nasm' 'nss-mdns' 'python2-pillow' 'aml-libs-c2'
-  'python2-pybluez' 'python2-simplejson' 'rtmpdump' 'sdl2' 'sdl_image'
-  'shairplay' 'smbclient' 'swig' 'taglib' 'tinyxml' 'unzip' 'upower' 'yajl' 'zip'
-)
-
+makedepends=('afpfs-ng' 'aml-libs-c2' 'bluez-libs' 'boost' 'cmake' 'curl' 'cwiid' 'doxygen' 
+             'git' 'glew' 'gperf' 'hicolor-icon-theme' 'jasper' 'java-runtime' 'libaacs' 'libcrossguid-git'
+             'libass' 'libbluray' 'libcdio' 'libcec' 'libcrossguid' 'libmariadbclient' 'lzo'
+             'libmicrohttpd' 'libmodplug' 'libmpeg2' 'libnfs' 'libplist' 'libpulse' 'libssh'
+             'libva' 'libxslt' 'mesa' 'nasm' 'nss-mdns' 'odroid-c2-libgl-fb' 'odroid-c2-libgl-headers' 
+             'python2-pillow' 'python2-pybluez' 'python2-simplejson' 'rtmpdump' 'sdl2' 'sdl_image' 
+             'shairplay' 'smbclient' 'swig' 'taglib' 'tinyxml' 'unzip' 'upower' 'yajl' 'zip')
+       
 source=("https://github.com/phedoreanu/xbmc/archive/${_commit}.tar.gz"
         'kodi_permissions.conf'
         'kodi.service'
         'polkit.rules'
-        '99-odroid.rules')
-sha256sums=('2f26c0a4de2abcc5171a6a75219fd0333d85498a0fa1df9d164b0b8b63e8fbc6'
+        '99-odroid.rules'
+        'https://raw.githubusercontent.com/phedoreanu/LibreELEC.tv/master/packages/mediacenter/kodi/patches/aarch64/kodi-0001-aml-Fill-audio-packets-completely-when-resampling-to.patch'
+        'https://raw.githubusercontent.com/phedoreanu/LibreELEC.tv/master/packages/mediacenter/kodi/patches/aarch64/kodi-0002-AESinkALSA-force-default-device-for-non-passthrough.patch'
+        'https://raw.githubusercontent.com/phedoreanu/LibreELEC.tv/master/packages/mediacenter/kodi/patches/aarch64/kodi-0004-powermanagement-disable-suspend.patch')	     
+        
+sha256sums=('63d5b1e5a912ca6b0505afebc67c96d371c43f57f5d0317712aa3fa156f2bb19'
             '8c606f29aa9ec90f4c93e1751cfd4000872937e604e6ad7538b96ba29612d2f6'
             '79aa17b475967d97b6c72c850b638705d6feb6d995844476b65d68d33d161114'
             'c68ed2bd377f80b606b8815d78239b9132b479eafc1d19797cee5824debe1800'
-            '5ddf80329c9f5d054525b45f788b3405d199bfc6cf5b08c543ad29766ec27f6e')
+            '5ddf80329c9f5d054525b45f788b3405d199bfc6cf5b08c543ad29766ec27f6e'
+            '87c00b3b4fdd4979e619c8cfef0376fe4e31117e3748c56707ac2363805349d5'
+            'af178ee8bc9b2916c217c0eb1eb53653aa787add20880f2db335adfc6777e4e7'
+            'e227d9b33eed5eb017045e85d8d3b426ecf7c3d31559ce1d37cbd4dde9c61ffe')
 
 prepare() {
   cd xbmc-${_commit}
+
+  patch -Np1 -i "$srcdir/kodi-0001-aml-Fill-audio-packets-completely-when-resampling-to.patch"
+  patch -Np1 -i "$srcdir/kodi-0002-AESinkALSA-force-default-device-for-non-passthrough.patch"
+  patch -Np1 -i "$srcdir/kodi-0004-powermanagement-disable-suspend.patch"
 
   find -type f -name *.py -exec sed 's|^#!.*python$|#!/usr/bin/python2|' -i "{}" +
   sed 's|^#!.*python$|#!/usr/bin/python2|' -i tools/depends/native/rpl-native/rpl
@@ -44,34 +52,25 @@ prepare() {
 
 build() {
   cd xbmc-${_commit}
+ 
+  # make add-ons  
+  #make -C tools/depends/target/binary-addons PREFIX=$_prefix ADDONS="inputstream.mpd"
+  
+  cmake -DCMAKE_INSTALL_PREFIX=$_prefix \
+  -DCMAKE_INSTALL_LIBDIR=$_prefix/lib \
+  -DCORE_SYSTEM_NAME=linux \
+  -DWITH_CPU="cortex-a53" \
+  -DWITH_ARCH=$arch \
+  -DENABLE_OPENGL=OFF \
+  -DENABLE_X11=OFF \
+  -DENABLE_VAAPI=OFF \
+  -DENABLE_VDPAU=OFF \
+  -DENABLE_EVENTCLIENTS=ON \
+  -DENABLE_AML=ON \
+  -DLIRC_DEVICE=/run/lirc/lircd
 
-  # https://gcc.gnu.org/onlinedocs/gcc/AArch64-Options.html
-  CFLAGS=`echo "$CFLAGS -I/usr/include/{ump,umplock} -mcpu=cortex-a53+crc -mtune=cortex-a53 -mabi=lp64"` && CXXFLAGS="$CFLAGS"
-  LDFLAGS+=" -L/usr/lib/mali-egl -L/usr/lib/aml_libs"
-
-  # Bootstrapping
-  MAKEFLAGS=-j`nproc` ./bootstrap
-
-  # Configuring XBMC
-  export PYTHON_VERSION=2  # external python v2
-  ./configure --prefix=$_prefix \
-    gl_cv_func_gettimeofday_clobber=no ac_cv_lib_bluetooth_hci_devid=no \
-    --disable-debug \
-    --enable-optimizations \
-    --enable-libbluray \
-    --disable-texturepacker \
-    --with-lirc-device=/run/lirc/lircd \
-    --disable-static --enable-shared \
-    --disable-vaapi \
-    --disable-vdpau \
-    --disable-openmax \
-    --disable-gl \
-    --disable-x11 \
-    --enable-gles \
-    --enable-codec=amcodec
-
-  # Now (finally) build
-  make -j`nproc`
+  make VERBOSE=1 -j`nproc`
+  make preinstall
 }
 
 package_kodi-c2() {
@@ -87,7 +86,7 @@ package_kodi-c2() {
     'bluez-libs' 'fribidi' 'glew' 'hicolor-icon-theme' 'libcdio'
     'libjpeg-turbo' 'libmariadbclient' 'libmicrohttpd' 'libpulse' 'libssh'
     'libva' 'libxrandr' 'libxslt' 'lzo' 'sdl2' 'smbclient' 'taglib' 'tinyxml'
-    'yajl' 'odroid-c2-libgl-fb' 'aml-libs-c2' 'mesa'
+    'yajl' 'odroid-c2-libgl-fb' 'aml-libs-c2' 'mesa' 'libcrossguid-git'
   )
   optdepends=(
     'afpfs-ng: Apple shares support'
@@ -107,18 +106,32 @@ package_kodi-c2() {
   provides=('xbmc' 'kodi')
   conflicts=('xbmc' 'kodi' 'shairplay-git')
   replaces=('xbmc')
+  
+  _components=(
+    'kodi'
+    'kodi-bin'
+  )
 
   cd xbmc-${_commit}
-  # Running make install
-  make DESTDIR="$pkgdir" install
-
-  # Licenses
-  install -dm755 ${pkgdir}${_prefix}/share/licenses/${pkgname}
-  for licensef in LICENSE.GPL copying.txt; do
-	mv ${pkgdir}${_prefix}/share/doc/kodi/${licensef} \
-		${pkgdir}${_prefix}/share/licenses/${pkgname}
+ 
+  # install Kodi  
+  for _cmp in ${_components[@]}; do
+  DESTDIR="$pkgdir" /usr/bin/cmake \
+    -DCMAKE_INSTALL_COMPONENT="$_cmp" \
+     -P cmake_install.cmake
   done
 
+  # Licenses
+  install -dm755 ${pkgdir}/usr/share/licenses/${pkgname}
+  for licensef in LICENSE.GPL copying.txt; do
+    mv ${pkgdir}/usr/share/doc/kodi/${licensef} \
+      ${pkgdir}/usr/share/licenses/${pkgname}
+  done
+  
+  # python2 is being used
+  cd "$pkgdir"
+  grep -lR '#!.*python' * | while read file; do sed -s 's/\(#!.*python\)/\12/g' -i "$file"; done
+  
   install -Dm0644 $srcdir/kodi_permissions.conf $pkgdir/etc/tmpfiles.d/kodi_permissions.conf
   install -Dm0644 $srcdir/kodi.service $pkgdir/usr/lib/systemd/system/kodi.service
   install -Dm0644 $srcdir/polkit.rules $pkgdir/etc/polkit-1/rules.d/10-kodi.rules
@@ -132,12 +145,24 @@ package_kodi-c2-eventclients() {
   provides=('kodi-eventclients')
   conflicts=('kodi-eventclients')
   depends=('cwiid')
+  
+  _components=(
+    'kodi-eventclients-common'
+    'kodi-eventclients-ps3'
+    'kodi-eventclients-wiiremote'
+    'kodi-eventclients-xbmc-send'
+  )
 
-  cd ${srcdir}/xbmc-${_commit}
+  cd xbmc-${_commit}
 
-  make DESTDIR="$pkgdir" eventclients WII_EXTRA_OPTS=-DCWIID_OLD
-
-  install -dm755 "$pkgdir/usr/lib/python2.7/$pkgbase"
-  mv "$pkgdir/kodi"/* "$pkgdir/usr/lib/python2.7/$pkgbase"
-  rmdir "$pkgdir/kodi"
+  # install eventclients
+  for _cmp in ${_components[@]}; do
+  DESTDIR="$pkgdir" /usr/bin/cmake \
+    -DCMAKE_INSTALL_COMPONENT="$_cmp" \
+     -P cmake_install.cmake
+  done
+  
+  # python2 is being used
+  cd "$pkgdir"
+  grep -lR '#!.*python' * | while read file; do sed -s 's/\(#!.*python\)/\12/g' -i "$file"; done
 }
